@@ -6,7 +6,7 @@ public class PlayerMovement : MonoBehaviour
 {
     private float horizontal;
     private float speed = 8f;
-    public float jumpingPower = 16f;
+    public float jumpingPower;
     private bool isFacingRight = true;
 
     private float coyoteTime = 0.2f;
@@ -24,21 +24,49 @@ public class PlayerMovement : MonoBehaviour
     private float wallJumpingTime = 0.2f;
     private float wallJumpingCounter;
     private float wallJumpingDuration = 0.4f;
-    private Vector2 wallJumpingPower = new Vector2(8f, 16f);
+    public Vector2 wallJumpingPower = new Vector2(8f, 16f);
 
+    //jump variables
+    private bool isJumping;
+    private int maxJumps = 2;
+    private int remainingJumps;
 
     [SerializeField] private Rigidbody2D rb;
     [SerializeField] private Transform groundCheck;
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private Transform wallCheck;
     [SerializeField] private LayerMask wallLayer;
+    [SerializeField] private TrailRenderer tr;
+
+    //dash variables
+
+    private bool canDash = true;
+    private bool isDashing;
+    private float dashingPower = 12f;
+    private float dashingTime = 0.2f;
+    private float dashingCoolDown = 1f;
 
     
     void Update()
     {
+        if (isDashing)
+        {
+            return;
+        }
         horizontal = Input.GetAxisRaw("Horizontal");
 
-        if (IsGrounded())
+        if(Input.GetKeyDown(KeyCode.P)&& canDash)
+        {
+            StartCoroutine(Dash());
+        }
+
+        if(IsGrounded() && !Input.GetButton("Jump"))
+        {
+            isJumping = false;
+            remainingJumps = maxJumps;
+        }
+
+        if (IsGrounded())//condiciones para tocar el piso
         {
             Debug.Log("Estoy parado");
             coyoteTimeCounter = coyoteTime;
@@ -49,8 +77,14 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimeCounter -= Time.deltaTime;
         }
 
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetButtonDown("Jump"))//tocar el boton y saltar
         {
+            if (IsGrounded() || (isJumping && remainingJumps > 0f))
+            {
+                isJumping = true;
+                rb.velocity = new Vector2(rb.velocity.x, jumpingPower);
+                remainingJumps--;
+            }
             jumpBufferCounter = jumpBufferTime;
         }
         else
@@ -59,15 +93,14 @@ public class PlayerMovement : MonoBehaviour
         }
 
 
-        if(jumpBufferCounter>0f&& coyoteTimeCounter>0f)
+        if(jumpBufferCounter>0f && coyoteTimeCounter>0f)//condiciones de salto
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpingPower);
             jumpBufferCounter = 0f;
-
         }
         if(Input.GetButtonUp("Jump") && rb.velocity.y > 0f)
         {
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * 0.5f);
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y*0.5f );
             coyoteTimeCounter = 0f;
 
         }
@@ -83,6 +116,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isDashing)
+        {
+            return;
+        }
         if (!isWallJumping)
         {
             rb.velocity = new Vector2(horizontal * speed, rb.velocity.y);
@@ -108,7 +145,7 @@ public class PlayerMovement : MonoBehaviour
 
     private bool IsWalled()
     {
-        return Physics2D.OverlapCircle(wallCheck.position, 02f, wallLayer);
+        return Physics2D.OverlapCircle(wallCheck.position, 0.2f, wallLayer);
     }
     private void WallSlide()
     {
@@ -117,6 +154,12 @@ public class PlayerMovement : MonoBehaviour
             isWallSliding = true;
             rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
         }
+        //else if (!IsWalled() && !IsGrounded() && horizontal !=0f)
+        //{
+        //    isWallSliding = false;
+        //    rb.velocity = new Vector2(rb.velocity.x,rb.velocity.y *-1.5f);
+
+        //}
         else
         {
             isWallSliding = false;
@@ -157,5 +200,21 @@ public class PlayerMovement : MonoBehaviour
     private void StopWallJumping()
     {
         isWallJumping = false;
+    }
+
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        float originalGravity = rb.gravityScale;
+        rb.gravityScale = 0f;
+        rb.velocity = new Vector2(transform.localScale.x * dashingPower/2, transform.localScale.y * -dashingPower/2);
+        tr.emitting = true;
+        yield return new WaitForSeconds(dashingTime);
+        tr.emitting = false;
+        rb.gravityScale = originalGravity;
+        isDashing = false;
+        yield return new WaitForSeconds(dashingCoolDown);
+        canDash = true;
     }
 }
