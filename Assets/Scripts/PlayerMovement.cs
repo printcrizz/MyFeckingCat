@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
+    [SerializeField] Animator anim;
+
     private float horizontal;
     private float speed = 8f;
     public float jumpingPower;
@@ -42,9 +44,17 @@ public class PlayerMovement : MonoBehaviour
 
     private bool canDash = true;
     private bool isDashing;
-    private float dashingPower = 12f;
-    private float dashingTime = 0.2f;
+    [SerializeField] float dashingPower = 6f;
+    private float dashingTime = 0.1f;
     private float dashingCoolDown = 1f;
+
+    //attack variables
+    private bool canAttack =true;
+    private float attackTime = 0.25f;
+    public LayerMask enemyMask;
+    public LayerMask HookCheck;
+    public Transform Whip;
+
 
     
     void Update()
@@ -55,7 +65,7 @@ public class PlayerMovement : MonoBehaviour
         }
         horizontal = Input.GetAxisRaw("Horizontal");
 
-        if(Input.GetKeyDown(KeyCode.P)&& canDash)
+        if(Input.GetKeyDown(KeyCode.P) && canDash)
         {
             StartCoroutine(Dash());
         }
@@ -68,12 +78,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (IsGrounded())//condiciones para tocar el piso
         {
-            Debug.Log("Estoy parado");
             coyoteTimeCounter = coyoteTime;
         }
         else
         {
-            Debug.Log("Estoy Volando");
             coyoteTimeCounter -= Time.deltaTime;
         }
 
@@ -107,6 +115,7 @@ public class PlayerMovement : MonoBehaviour
         
         WallSlide();
         WallJump();
+        Attack();
 
         if (!isWallJumping)
         {
@@ -208,7 +217,7 @@ public class PlayerMovement : MonoBehaviour
         isDashing = true;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0f;
-        rb.velocity = new Vector2(transform.localScale.x * dashingPower/2, transform.localScale.y * -dashingPower/2);
+        rb.velocity = new Vector2(transform.localScale.x * Mathf.Abs(Input.GetAxis("Horizontal")) * dashingPower, transform.localScale.y * Input.GetAxis("Vertical") * dashingPower);
         tr.emitting = true;
         yield return new WaitForSeconds(dashingTime);
         tr.emitting = false;
@@ -216,5 +225,43 @@ public class PlayerMovement : MonoBehaviour
         isDashing = false;
         yield return new WaitForSeconds(dashingCoolDown);
         canDash = true;
+    }
+
+    private void Attack()
+    {
+        if (Input.GetKeyDown(KeyCode.X) && canAttack)
+        {
+            Debug.Log("Attack");
+            StartCoroutine(Attacking());
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    private IEnumerator Attacking()
+    {
+        canAttack = false;
+
+        //play animation
+        anim.Play("Attack");
+        if (!IsHooked())
+        {
+            //Start HingeJoint2D
+        }
+        else
+        {
+            //Attack
+        }
+
+        yield return new WaitForSeconds(attackTime);
+        canAttack = true;
+    }
+
+    private bool IsHooked()
+    {
+        return Physics2D.OverlapCircle(Whip.position, 0.2f, HookCheck);
+
     }
 }
