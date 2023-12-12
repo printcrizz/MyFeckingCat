@@ -6,6 +6,9 @@ public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] Animator anim;
 
+    public LineRenderer _lineRenderer;
+    public DistanceJoint2D _distanceJoint;
+
     private float horizontal;
     private float speed = 8f;
     public float jumpingPower;
@@ -55,8 +58,12 @@ public class PlayerMovement : MonoBehaviour
     public LayerMask HookCheck;
     public Transform Whip;
 
+    private void Start()
+    {
+        _distanceJoint.enabled = false;
+    }
 
-    
+
     void Update()
     {
         if (isDashing)
@@ -246,8 +253,10 @@ public class PlayerMovement : MonoBehaviour
 
         //play animation
         anim.Play("Attack");
-        if (!IsHooked())
+        if (IsHooked())
         {
+            Debug.Log("Hooked");
+
             //Start HingeJoint2D
         }
         else
@@ -262,6 +271,6 @@ public class PlayerMovement : MonoBehaviour
     private bool IsHooked()
     {
         return Physics2D.OverlapCircle(Whip.position, 0.2f, HookCheck);
-
+        Debug.Log("Hooked");
     }
 }
