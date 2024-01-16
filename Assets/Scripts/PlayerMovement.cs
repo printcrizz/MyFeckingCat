@@ -10,7 +10,7 @@ public class PlayerMovement : MonoBehaviour
     public DistanceJoint2D _distanceJoint;
 
     private float horizontal;
-    private float speed = 8f;
+    [SerializeField] float speed = 8f;
     public float jumpingPower;
     private bool isFacingRight = true;
 
@@ -24,16 +24,18 @@ public class PlayerMovement : MonoBehaviour
     private float wallSlidingSpeed = 2f;
 
     //Wall Jump private variables
+    [Header("Wall Jump Variables")]
+    [SerializeField] bool canWallJump;
     private bool isWallJumping;
     private float wallJumpingDirection;
     private float wallJumpingTime = 0.2f;
     private float wallJumpingCounter;
-    private float wallJumpingDuration = 0.4f;
+    [SerializeField] float wallJumpingDuration = 0.4f;
     public Vector2 wallJumpingPower = new Vector2(8f, 16f);
 
     //jump variables
     private bool isJumping;
-    private int maxJumps = 2;
+    [SerializeField] int maxJumps;
     private int remainingJumps;
 
     [SerializeField] private Rigidbody2D rb;
@@ -44,10 +46,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private TrailRenderer tr;
 
     //dash variables
-
-    private bool canDash = true;
+    [Header("Dash Variables")]
+    [SerializeField] bool canDash;
     private bool isDashing;
-    [SerializeField] float dashingPower = 6f;
+    [SerializeField] float dashingPower;
     private float dashingTime = 0.1f;
     private float dashingCoolDown = 1f;
 
@@ -61,6 +63,11 @@ public class PlayerMovement : MonoBehaviour
     private void Start()
     {
         _distanceJoint.enabled = false;
+        anim = GetComponent<Animator>();
+        canWallJump = false;
+        canAttack = false;
+        canDash = false;
+        maxJumps = 1;
     }
 
 
@@ -81,10 +88,13 @@ public class PlayerMovement : MonoBehaviour
         {
             isJumping = false;
             remainingJumps = maxJumps;
+            anim.SetBool("isJumping", false);
+
         }
 
         if (IsGrounded())//condiciones para tocar el piso
         {
+            //anim.SetBool("isJumping", false);
             coyoteTimeCounter = coyoteTime;
         }
         else
@@ -98,6 +108,7 @@ public class PlayerMovement : MonoBehaviour
             {
                 isJumping = true;
                 rb.velocity = new Vector2(rb.velocity.x, jumpingPower);
+                anim.SetBool("isJumping", true);
                 remainingJumps--;
             }
             jumpBufferCounter = jumpBufferTime;
@@ -117,6 +128,7 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y*0.5f );
             coyoteTimeCounter = 0f;
+            anim.SetBool("isJumping", true);
 
         }
         
@@ -139,6 +151,9 @@ public class PlayerMovement : MonoBehaviour
         if (!isWallJumping)
         {
             rb.velocity = new Vector2(horizontal * speed, rb.velocity.y);
+            anim.SetFloat("xVelocity", Mathf.Abs(rb.velocity.x));
+            anim.SetFloat("yVelocity", rb.velocity.y);
+
         }
     }
 
@@ -167,6 +182,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (IsWalled() && !IsGrounded() && horizontal != 0f)
         {
+            anim.SetBool("isWalling", true);
             isWallSliding = true;
             rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
         }
@@ -179,6 +195,8 @@ public class PlayerMovement : MonoBehaviour
         else
         {
             isWallSliding = false;
+            anim.SetBool("isWalling", false);
+
         }
     }
     private void WallJump()
@@ -195,7 +213,7 @@ public class PlayerMovement : MonoBehaviour
             wallJumpingCounter -= Time.deltaTime;
         }
 
-        if(Input.GetButtonDown("Jump")&& wallJumpingCounter > 0f)
+        if(Input.GetButtonDown("Jump")&& wallJumpingCounter > 0f && canWallJump)
         {
             isWallJumping = true;
             rb.velocity = new Vector2(wallJumpingDirection * wallJumpingPower.x, wallJumpingPower.y);
@@ -221,22 +239,26 @@ public class PlayerMovement : MonoBehaviour
     private IEnumerator Dash()
     {
         canDash = false;
+        anim.SetTrigger("isDashing");
         isDashing = true;
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0f;
-        rb.velocity = new Vector2(transform.localScale.x * Mathf.Abs(Input.GetAxis("Horizontal")) * dashingPower, transform.localScale.y * Input.GetAxis("Vertical") * dashingPower);
+        rb.velocity = new Vector2(transform.localScale.x * dashingPower, 0f);
+        //Vector2 var = new Vector2(transform.localScale.x * Mathf.Abs(Input.GetAxis("Horizontal")) , transform.localScale.y * Input.GetAxis("Vertical")).normalized;
+        //rb.velocity = new Vector2(var.x *dashingPower, var.y *dashingPower);
         tr.emitting = true;
         yield return new WaitForSeconds(dashingTime);
         tr.emitting = false;
         rb.gravityScale = originalGravity;
         isDashing = false;
+        //anim.SetBool("isDashing", false);
         yield return new WaitForSeconds(dashingCoolDown);
         canDash = true;
     }
 
     private void Attack()
     {
-        if (Input.GetKeyDown(KeyCode.X) && canAttack)
+        if (Input.GetKeyDown(KeyCode.O) && canAttack)
         {
             Debug.Log("Attack");
             StartCoroutine(Attacking());
@@ -272,5 +294,24 @@ public class PlayerMovement : MonoBehaviour
     {
         return Physics2D.OverlapCircle(Whip.position, 0.2f, HookCheck);
         Debug.Log("Hooked");
+    }
+
+    public void ActivateWallJump()
+    {
+        canWallJump = true;
+    }
+
+    public void ActivateDoubleJump()
+    {
+        maxJumps = 2;
+    }
+    public void ActivateDash()
+    {
+        canDash = true;
+    }
+
+    public void ActivateAttack()
+    {
+        canAttack = true;
     }
 }
